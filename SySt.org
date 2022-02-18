@@ -1,0 +1,94 @@
+* Looking for SySt stars.
+
+  - 2mass-159J162-coorLamost.dat
+  - 2mass-7J-coorLamost.dat
+  - 2mass-7J9-coorLamost.dat
+
+Download the spectra from LAMOST.
+
+When the file IR criteria is very big. Lamost only allows 1000000 row file. So i written a scrip
+to split the file into smaller one.
+
+: split-largetable.py
+
+#+BEGIN_SRC python :return pltfile :results file :results output
+  
+  import astropy.coordinates as coord
+  import astropy.units as u
+  from astropy.io import ascii
+  from astropy.table import Table, QTable
+  from astropy.coordinates import SkyCoord 
+  import numpy as np
+  from astropy.io import fits
+  import matplotlib.pyplot as plt
+  import argparse
+  import sys
+  import os
+  from astropy.visualization import hist
+  from astroML.datasets import fetch_imaging_sample, fetch_sdss_S82standards
+  from astroML.crossmatch import crossmatch_angular
+  from collections import OrderedDict
+  import glob
+  import json
+  import seaborn as sn
+  
+  pattern = "Spectra-Skoda/For-training/*.fits"
+  file_fits = glob.glob(pattern)
+  
+  shape = (len(file_fits), 4)
+  
+  inffits = []
+  for name_fit in file_fits:
+      hdulist = fits.open(name_fit)
+      inffits.append(name_fit.split("g/")[-1].split(".fit")[0])
+      #c = SkyCoord(ra=float(hdulist[0].header["RA"])*u.degree, dec=float(hdulist[0].header["DEC"])*u.degree) 
+      #inffits.append('LAMOST{0}{1}'.format(c.ra.to_string(u.hour, sep='', precision=2, pad=True), c.dec.to_string(sep='', precision=1, alwayssign=True, pad=True)))
+      inffits.append(hdulist[0].header["DESIG"])
+      inffits.append(float(hdulist[0].header["RA"]))
+      inffits.append(float(hdulist[0].header["DEC"]))
+  
+  
+  XX_fits = np.array(inffits).reshape(shape)
+  print("Data shape:", XX_fits.shape)
+  
+  # Tables with all information 
+  tab = Table(XX_fits, names=('ID', 'RA', 'DEC', 'Redshift'), meta={'name': 'first table'}, dtype=('S', 'S', 'f8', 'f8'))
+  
+  
+  #tab.write("Final-list/lamost-spectra/spectra-information-lamost.ecsv", format="ascii.ecsv", overwrite=True)
+  #tab.write("Final-list/lamost-spectra/spectra-information-lamost.dat", format="ascii.commented_header", overwrite=True)
+  
+#+END_SRC
+** Machine learning technique
+
+   I decided to use ML to find the emission line sources. For that I got the samples for the training:
++ The sample for emission line stars.
++ The sample for non-emission line stars.
+
+  - First step: Using umap for data reduction.
+  - Second step: Using RF for classifying.
+  
+   The program is:
+   : umap-rf.py
+
+   
+Creating simple scrip to copy files:
+
+#+BEGIN_SRC python :return pltfile :results file :results output
+  from astropy.table import Table
+  import shutil
+  import os
+  
+  # read the table
+  tab = Table.read("emission-objects-13J14.ecsv", format = "ascii.ecsv")
+  
+  fig_dir = "13J14"
+  for tabi in tab:
+      namefits = tabi["Namefile"] + ".fits"
+      shutil.copy2(os.path.join(fig_dir, namefits) , 'Emission13J14')
+  
+#+END_SRC
+
+#+RESULTS:
+[[file:]]
+
